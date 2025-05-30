@@ -1,46 +1,63 @@
 pipeline {
     agent any
 
+    environment {
+        SONAR_TOKEN = credentials('sonar-token')  // Adding this in Jenkins Credentials
+    }
+
     stages {
         stage('Build') {
             steps {
-                echo 'Building the application...'
+                echo 'Building the Docker containers...'
+                sh 'docker-compose build'
             }
         }
 
         stage('Test') {
             steps {
-                echo 'Running tests...'
+                echo 'Running unit tests with Pytest...'
+                sh 'docker-compose run backend pytest'
             }
         }
 
         stage('Code Quality') {
             steps {
-                echo 'Checking code quality...'
+                echo 'Running code quality analysis with SonarQube...'
+                sh '''
+                sonar-scanner \
+                  -Dsonar.projectKey=NutriHealth \
+                  -Dsonar.sources=./backend \
+                  -Dsonar.host.url=http://localhost:9000 \
+                  -Dsonar.login=$SONAR_TOKEN
+                '''
             }
         }
 
         stage('Security') {
             steps {
-                echo 'Scanning for security vulnerabilities...'
+                echo 'Running security scan with Snyk...'
+                sh 'snyk test --file=backend/requirements.txt || true'
             }
         }
 
         stage('Deploy') {
             steps {
-                echo 'Deploying to test server...'
+                echo 'Deploying to test environment...'
+                sh 'docker-compose up -d'
             }
         }
 
         stage('Release') {
             steps {
-                echo 'Releasing to production...'
+                echo 'Simulating release step...'
+                sh 'echo "Release to production done!"'
             }
         }
 
         stage('Monitoring') {
             steps {
-                echo 'Monitoring app health...'
+                echo 'Checking if app is live...'
+                sh 'curl http://localhost:8000/health || true'
             }
         }
     }
